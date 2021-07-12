@@ -43,7 +43,7 @@ Re-running search parameters for Scopus returned 1770 results.
 link to query: https://www-scopus-com.ezproxy.auckland.ac.nz/results/results.uri?sort=plf-f&src=s&sid=e992393549b76fbc30119a8057500cdd&sot=a&sdt=a&sl=120&s=TITLE-ABS-KEY%28%22climate+justice%22+OR+%22environmental+justice%22+OR+%22social+justice%22+AND+%22climate+change%22+OR+%22Global+warming%22%29&origin=searchadvanced&editSaveSearch=&txGid=67869551553f160ede325131982356bc
 
 ```{r scopus, echo=FALSE, results="show", message=FALSE}
-library(bibliometrix)
+# library(bibliometrix)
 scopus_data <- convert2df(file = "data/scopus_1770.bib", dbsource = 'scopus',
                        format = 'bibtex')
 scopus_results <- biblioAnalysis(scopus_data, sep = ";")
