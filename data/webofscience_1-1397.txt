@@ -1,4 +1,4 @@
-FN Clarivate Analytics Web of Science
+FN Clarinet Analytics Web of Science
 VR 1.0
 PT J
 AU Nicholas, PK
