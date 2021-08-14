@@ -1,0 +1,16 @@
+
+
+```{r, message=FALSE}
+library(tidyverse)
+library(data.table)
+
+```
+
+
+```{r, message=FALSE}
+scopus_db <- read.csv("data/scopus_1803.csv")
+wos_db <- read.csv("data/webofscience_1-1432.csv")
+
+```
+
+
