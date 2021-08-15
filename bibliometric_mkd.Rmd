@@ -40,7 +40,7 @@ CR_local$Papers[1:10,]
 
 Re-running search parameters for Scopus returned 1770 results.
 
-link to query: https://www-scopus-com.ezproxy.auckland.ac.nz/results/results.uri?sort=plf-f&src=s&sid=e992393549b76fbc30119a8057500cdd&sot=a&sdt=a&sl=120&s=TITLE-ABS-KEY%28%22climate+justice%22+OR+%22environmental+justice%22+OR+%22social+justice%22+AND+%22climate+change%22+OR+%22Global+warming%22%29&origin=searchadvanced&editSaveSearch=&txGid=67869551553f160ede325131982356bc
+link to query: TITLE-ABS-KEY ( "climate justice"  OR  "environmental justice"  OR  "social justice"  AND  "climate change"  OR  "Global warming" )  AND  ( LIMIT-TO ( DOCTYPE ,  "ar" )  OR  LIMIT-TO ( DOCTYPE ,  "ch" )  OR  LIMIT-TO ( DOCTYPE ,  "re" )  OR  LIMIT-TO ( DOCTYPE ,  "bk" )  OR  LIMIT-TO ( DOCTYPE ,  "ed" ) )  AND  ( LIMIT-TO ( LANGUAGE ,  "English" ) )  AND  ( LIMIT-TO ( SRCTYPE ,  "j" )  OR  LIMIT-TO ( SRCTYPE ,  "b" )  OR  LIMIT-TO ( SRCTYPE ,  "k" ) ) 
 
 ```{r scopus, echo=FALSE, results="show", message=FALSE}
 # library(bibliometrix)

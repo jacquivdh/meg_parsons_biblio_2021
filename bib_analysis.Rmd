@@ -1,16 +1,26 @@
 
 
-```{r, message=FALSE}
+```{r echo=FALSE}
 library(tidyverse)
 library(data.table)
+library(janitor)
 
 ```
 
 
-```{r, message=FALSE}
-scopus_db <- read.csv("data/scopus_1803.csv")
-wos_db <- read.csv("data/webofscience_1-1432.csv")
+```{r echo=FALSE}
+scopus_db <- read.csv("data/scopus_1803.csv", fileEncoding="UTF-8-BOM")
+wos_db <- fread("data/webofscience_1-1432.csv")
+
+# Warning but working...?
+# Warning message:
+# In scan(file = file, what = what, sep = sep, quote = quote, dec = dec,  :
+#   invalid input found on input connection 'data/scopus_1803.csv'
+
+scopus_db <- clean_names(scopus_db)
+wos_db <- clean_names(wos_db)
 
 ```
 
 
+https://www-scopus-com.ezproxy.auckland.ac.nz/results/results.uri?sort=plf-f&src=s&nlo=&nlr=&nls=&sid=b91254e0173e72feda07c43a9dd9d979&sot=a&sdt=cl&cluster=scosubtype%2c%22ar%22%2ct%2c%22ch%22%2ct%2c%22re%22%2ct%2c%22bk%22%2ct%2bscolang%2c%22English%22%2ct&sl=120&s=TITLE-ABS-KEY%28%22climate+justice%22+OR+%22environmental+justice%22+OR+%22social+justice%22+AND+%22climate+change%22+OR+%22Global+warming%22%29&origin=resultslist&zone=leftSideBar&editSaveSearch=&txGid=a5a71838be4b9defe5665bc7715daff0
