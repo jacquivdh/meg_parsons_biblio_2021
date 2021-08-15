@@ -1,4 +1,16 @@
 
+Check
+
+- column outliers
+
+- abstracts/keywords
+
+- unrelated titles
+
+- DOI (ISSN may be a bad record)
+
+- Language (english)
+
 
 ```{r echo=FALSE}
 library(tidyverse)
