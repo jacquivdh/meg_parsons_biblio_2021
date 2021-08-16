@@ -1,3 +1,32 @@
+# Workflow
+
+- Clean DB
+
+- Number of articles through time
+
+- Which journals are being published in bar graph
+
+- mean number of authors per articles
+
+- Author collaboration network (tidygraph/tidygraph)
+
+- Institution not always linked to country. George has code
+
+- George has code to clean language special characters
+
+- Finn did author initials cleaning code
+
+- Keyword co-occurance (can split out by time)
+
+- ngrams (whole abstract; tidytex)
+
+- LDA topic within topic
+
+- DO THIS BETORE TOPIC MODELLING Stopwords (throw out the, a, and ...) and lemitize (contractions), another that does run/ran (tidytex)
+
+- revtools package
+
+
 
 Check
 
@@ -19,6 +48,7 @@ library(janitor)
 
 ```
 
+# Meta analysis
 
 ```{r echo=FALSE}
 scopus_db <- read.csv("data/scopus_1803.csv", fileEncoding="UTF-8-BOM")
@@ -34,5 +64,15 @@ wos_db <- clean_names(wos_db)
 
 ```
 
+
+
+
+
+
+
+
+
+
+# Within topic 
 
 https://www-scopus-com.ezproxy.auckland.ac.nz/results/results.uri?sort=plf-f&src=s&nlo=&nlr=&nls=&sid=b91254e0173e72feda07c43a9dd9d979&sot=a&sdt=cl&cluster=scosubtype%2c%22ar%22%2ct%2c%22ch%22%2ct%2c%22re%22%2ct%2c%22bk%22%2ct%2bscolang%2c%22English%22%2ct&sl=120&s=TITLE-ABS-KEY%28%22climate+justice%22+OR+%22environmental+justice%22+OR+%22social+justice%22+AND+%22climate+change%22+OR+%22Global+warming%22%29&origin=resultslist&zone=leftSideBar&editSaveSearch=&txGid=a5a71838be4b9defe5665bc7715daff0
