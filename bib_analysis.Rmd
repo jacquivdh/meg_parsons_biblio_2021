@@ -1,3 +1,8 @@
+---
+title: "bib_analysis"
+output: html_document
+---
+
 # Workflow
 
 - Clean DB
@@ -41,31 +46,75 @@ Check
 - Language (english)
 
 
-```{r echo=FALSE}
+```{r include=FALSE}
 library(tidyverse)
-library(data.table)
+# library(data.table)
 library(janitor)
+library(rscopus)
+library(lubridate)
 
 ```
 
 # Meta analysis
 
-```{r echo=FALSE}
-scopus_db <- read.csv("data/scopus_1803.csv", fileEncoding="UTF-8-BOM")
-wos_db <- fread("data/webofscience_1-1432.csv")
+The following code requires on-campus network access. Workaround for lockdown was to use a nectar VM. Using the UoA squid proxy should work as well. The data from the query have been downloaded and saved so the following code is commented out. 1827 results have been returned
 
-# Warning but working...?
-# Warning message:
-# In scan(file = file, what = what, sep = sep, quote = quote, dec = dec,  :
-#   invalid input found on input connection 'data/scopus_1803.csv'
 
-scopus_db <- clean_names(scopus_db)
-wos_db <- clean_names(wos_db)
+```{r include=FALSE}
+# rscopus::set_api_key("cf71c76658efeaf1c2da32d64bc8e1d6")
+# scopus_query <- scopus_search(query = "TITLE-ABS-KEY ( \"climate justice\"  OR  
+#                        \"environmental justice\"  OR  \"social justice\"  AND  
+#                        \"climate change\"  OR  \"Global warming\" )  AND  
+#                        ( LIMIT-TO ( DOCTYPE ,  \"ar\" )  OR  
+#                        LIMIT-TO ( DOCTYPE ,  \"ch\" )  OR  
+#                        LIMIT-TO ( DOCTYPE ,  \"re\" )  OR  
+#                        LIMIT-TO ( DOCTYPE ,  \"bk\" ) )  AND  
+#                        ( LIMIT-TO ( LANGUAGE ,  \"English\" ) )", 
+#                        view = "COMPLETE", count = 25, max_count = 2500)
+# 
+# scopus_results <- gen_entries_to_df(res70$entries)
+```
+
+
+```{r include=FALSE}
+scopus_results <- readRDS("data/scopus_api_1827.rds")
+scopus_results <- lapply(scopus_results, clean_names)
+str(scopus_results[[1]])
+
+author_df <- scopus_results[[1]] |> 
+  mutate(prism_cover_display_date = as_date(prism_cover_display_date),
+         author_count_total = as.numeric(author_count_total),
+         year = floor_date(prism_cover_date, "year"),
+         prism_issn = as.numeric(prism_e_issn),
+         prism_e_issn = as.numeric(prism_e_issn),
+         prism_volume = as.numeric(prism_volume)
+         )
+```
+
+
+```{r include=FALSE}
+publications_by_year <- author_df |> 
+  select(year) |>
+  group_by(year) |> 
+  summarise(count = length(year))
+
+ggplot(publications_by_year, aes(x = year, y = count)) +
+  geom_line()
 
 ```
 
 
 
+```{r include=FALSE}
+mean_author_by_year <- author_df |> 
+  select(year, author_count_total) |>
+  group_by(year) |> 
+  summarise(mean_auth = mean(author_count_total))
+
+ggplot(mean_author_by_year, aes(x = year, y = mean_auth)) +
+  geom_line()
+
+```
 
 
 
