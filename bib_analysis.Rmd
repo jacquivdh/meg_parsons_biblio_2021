@@ -52,23 +52,23 @@ library(tidyverse)
 library(janitor)
 library(rscopus)
 library(lubridate)
-
+library(tidytext)
+library(ggwordcloud)
+# library(ggthemes)
 ```
 
-# Meta analysis
+# Corpus overview
 
-The following code requires on-campus network access. Workaround for lockdown was to use a nectar VM. Using the UoA squid proxy should work as well. The data from the query have been downloaded and saved so the following code is commented out. 1827 results have been returned
 
 
 ```{r include=FALSE}
+# The following code requires on-campus network access. Work around for lockdown was to use a nectar VM. Using the UoA squid proxy should work as well. The data from the query have been downloaded and saved so the following code is commented out. 1827 results have been returned
+
+
 # rscopus::set_api_key("cf71c76658efeaf1c2da32d64bc8e1d6")
 # scopus_query <- scopus_search(query = "TITLE-ABS-KEY ( \"climate justice\"  OR  
 #                        \"environmental justice\"  OR  \"social justice\"  AND  
 #                        \"climate change\"  OR  \"Global warming\" )  AND  
-#                        ( LIMIT-TO ( DOCTYPE ,  \"ar\" )  OR  
-#                        LIMIT-TO ( DOCTYPE ,  \"ch\" )  OR  
-#                        LIMIT-TO ( DOCTYPE ,  \"re\" )  OR  
-#                        LIMIT-TO ( DOCTYPE ,  \"bk\" ) )  AND  
 #                        ( LIMIT-TO ( LANGUAGE ,  \"English\" ) )", 
 #                        view = "COMPLETE", count = 25, max_count = 2500)
 # 
@@ -77,51 +77,186 @@ The following code requires on-campus network access. Workaround for lockdown wa
 
 
 ```{r include=FALSE}
+# Some formatting/wrangling
+
 scopus_results <- readRDS("data/scopus_api_1827.rds")
 scopus_results <- lapply(scopus_results, clean_names)
 str(scopus_results[[1]])
+str(scopus_results$affiliation)
+str(scopus_results$author)
+str(scopus_results$`prism:isbn`)
+lapply(scopus_results, str)
 
 author_df <- scopus_results[[1]] |> 
-  mutate(prism_cover_display_date = as_date(prism_cover_display_date),
+  mutate(prism_cover_date = as_date(prism_cover_date),
          author_count_total = as.numeric(author_count_total),
          year = floor_date(prism_cover_date, "year"),
          prism_issn = as.numeric(prism_e_issn),
          prism_e_issn = as.numeric(prism_e_issn),
          prism_volume = as.numeric(prism_volume)
          )
+
+
+author_df[which(is.na(author_df$subtype_description)),]
+
+table(author_df$subtype, exclude = NULL) # only 1 undefined
+table(author_df$subtype_description, exclude = NULL) # undefined shows as NA
+
+
+sapply(author_df, function(x) sum(is.na(x)))
+
 ```
 
 
-```{r include=FALSE}
+## What publication types (books, artilces...)
+
+```{r echo=FALSE, warning=FALSE}
+ggplot(author_df, aes(fct_infreq(subtype_description))) +
+  geom_bar() +
+  scale_x_discrete(na.translate = FALSE) + # Leave out the 1 NA
+  theme_minimal()
+```
+
+
+## Top 20 most popular journals
+
+```{r echo=FALSE}
+# ggplot(author_df, aes(fct_infreq(prism_publication_name))) +
+#   geom_bar() +
+#   scale_x_discrete()
+
+journal_df <- author_df |>
+  count(prism_publication_name, sort = TRUE) |>
+  mutate(prism_publication_name = fct_reorder(prism_publication_name, n))
+
+# ggplot(tail(journal_df, 20), aes(x = prism_publication_name, y = n)) +
+#   geom_bar(stat = "identity") +
+#   scale_x_discrete(limits = rev, labels = scales::wrap_format(15)) +
+#   theme(axis.text.x = element_text(angle = 45))
+
+ggplot(head(journal_df, 20), aes(n, prism_publication_name)) +
+  geom_col() +
+  scale_y_discrete(labels = scales::wrap_format(20)) +
+  labs(y = NULL) +
+  theme_minimal()
+
+```
+Environmental Justice journal established in March 2008
+
+
+## Publications through time
+
+```{r echo=FALSE}
 publications_by_year <- author_df |> 
   select(year) |>
   group_by(year) |> 
   summarise(count = length(year))
 
 ggplot(publications_by_year, aes(x = year, y = count)) +
-  geom_line()
+  geom_line() +
+  scale_x_date(limits = c(publications_by_year$year[1], "2020-01-01")) +
+  theme_minimal()
 
 ```
 
 
+## Mean number of authors through time
 
-```{r include=FALSE}
+```{r echo=FALSE}
 mean_author_by_year <- author_df |> 
   select(year, author_count_total) |>
   group_by(year) |> 
   summarise(mean_auth = mean(author_count_total))
 
 ggplot(mean_author_by_year, aes(x = year, y = mean_auth)) +
-  geom_line()
+  geom_line() +
+  theme_minimal()
+
+```
+
+## Most productive authors (first and not)
+
+```{r}
+dim(scopus_results$author) # 4137 rows
+sum(is.na(scopus_results$author$given_name)) # 28 NA
+sum(is.na(scopus_results$author$surname)) # 21 NA
+scopus_results$author[which(is.na(scopus_results$author$given_name)),]
+
+
+# Am I having issues with duplicate authors? I.e., with/without initials in first name?
+productive_authors_df <- scopus_results$author |> 
+  drop_na(surname) |> # Most productive author is NA NA lol
+  unite("full_name", c("surname", "given_name"), sep = ", ", remove = FALSE) |> 
+  count(full_name, sort = TRUE) |>
+  mutate(full_name = fct_reorder(full_name, n))
+
+# unite can also be: mutate(full_name = str_c(scopus_results$author$given_name, scopus_results$author$surname, sep = ", "))
+
+ggplot(head(productive_authors_df, 20), aes(n, full_name)) +
+  geom_col() +
+  scale_y_discrete(labels = scales::wrap_format(15), na.translate = FALSE) +
+  labs(y = NULL) +
+  theme_minimal()
 
 ```
 
 
 
+## Most cited papers
 
 
 
 
-# Within topic 
 
-https://www-scopus-com.ezproxy.auckland.ac.nz/results/results.uri?sort=plf-f&src=s&nlo=&nlr=&nls=&sid=b91254e0173e72feda07c43a9dd9d979&sot=a&sdt=cl&cluster=scosubtype%2c%22ar%22%2ct%2c%22ch%22%2ct%2c%22re%22%2ct%2c%22bk%22%2ct%2bscolang%2c%22English%22%2ct&sl=120&s=TITLE-ABS-KEY%28%22climate+justice%22+OR+%22environmental+justice%22+OR+%22social+justice%22+AND+%22climate+change%22+OR+%22Global+warming%22%29&origin=resultslist&zone=leftSideBar&editSaveSearch=&txGid=a5a71838be4b9defe5665bc7715daff0
+
+# Topic analysis
+
+
+
+
+# Corpus analysis
+
+Most common words in abstracts. Not surprisingly they match the search terms
+
+```{r, echo=FALSE, message=FALSE}
+
+# Does tokenize contract?
+
+tidy_abs <- author_df |>
+  select(entry_number, dc_description) |> 
+  group_by(entry_number) |> 
+  unnest_tokens(word, dc_description) |> 
+  anti_join(stop_words) |> 
+  ungroup()
+
+tidy_abs |>
+  count(word, sort = T) |> 
+  filter(n > 600) |> 
+  mutate(word = reorder(word, n)) |>
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL)
+
+```
+
+A word cloud (because why not?)
+
+```{r, echo=FALSE, message=FALSE}
+
+tidy_abs |>
+  count(word, sort = T) |> 
+  top_n(200) |> 
+  ggplot() +
+  geom_text_wordcloud_area(aes(label = word, size = n)) +
+  scale_size_area(max_size = 15) +
+  theme_light()
+
+
+```
+
+Most common word pairs?
+
+
+
+Title length?
+
