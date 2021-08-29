@@ -55,11 +55,32 @@ library(lubridate)
 library(tidytext)
 library(ggwordcloud)
 # library(ggthemes)
+library(tidylo)
+library(widyr)
+library(tidygraph)
+library(ggraph)
+library(patchwork)
+
+facet_bar <- function(df, y, x, by, nrow = 2, ncol = 2, scales = "free") {
+  mapping <- aes(y = reorder_within({{ y }}, {{ x }}, {{ by }}), 
+                 x = {{ x }}, 
+                 fill = {{ by }})
+  
+  facet <- facet_wrap(vars({{ by }}), 
+                      nrow = nrow, 
+                      ncol = ncol,
+                      scales = scales) 
+  
+  ggplot(df, mapping = mapping) + 
+    geom_col(show.legend = FALSE) + 
+    scale_y_reordered() + 
+    facet + 
+    ylab("")
+}
 ```
 
+
 # Corpus overview
-
-
 
 ```{r include=FALSE}
 # The following code requires on-campus network access. Work around for lockdown was to use a nectar VM. Using the UoA squid proxy should work as well. The data from the query have been downloaded and saved so the following code is commented out. 1827 results have been returned
@@ -93,7 +114,8 @@ author_df <- scopus_results[[1]] |>
          year = floor_date(prism_cover_date, "year"),
          prism_issn = as.numeric(prism_e_issn),
          prism_e_issn = as.numeric(prism_e_issn),
-         prism_volume = as.numeric(prism_volume)
+         prism_volume = as.numeric(prism_volume),
+         citedby_count = as.numeric(citedby_count)
          )
 
 
@@ -176,7 +198,7 @@ ggplot(mean_author_by_year, aes(x = year, y = mean_auth)) +
 
 ## Most productive authors (first and not)
 
-```{r}
+```{r echo=FALSE, message=FALSE}
 dim(scopus_results$author) # 4137 rows
 sum(is.na(scopus_results$author$given_name)) # 28 NA
 sum(is.na(scopus_results$author$surname)) # 21 NA
@@ -201,41 +223,145 @@ ggplot(head(productive_authors_df, 20), aes(n, full_name)) +
 ```
 
 
-
 ## Most cited papers
 
+```{r echo=FALSE, message=FALSE}
+sum(is.na(author_df$citedby_count))
 
+author_df |>
+  arrange(desc(citedby_count)) |> 
+  slice(1:10) |>
+  mutate(dc_title = fct_reorder(dc_title, citedby_count)) |> 
+  ggplot(aes(y = dc_title, x = citedby_count)) +
+  geom_col() +
+  scale_y_discrete(labels = scales::wrap_format(20)) +
+  labs(y = NULL) +
+  theme_minimal()
 
+# Alternate way of doing the same thing:
+# title_df <- author_df |>
+#   select(dc_title, citedby_count) |> 
+#   arrange(desc(citedby_count)) |> 
+#   slice(1:15) |>
+#   mutate(dc_title = fct_reorder(dc_title, citedby_count))
+# 
+# ggplot(title_df, aes(y = dc_title, x = citedby_count)) +
+#   geom_col() +
+#   scale_y_discrete(limits = rev, labels = scales::wrap_format(15)) +
+#   labs(y = NULL) +
+#   theme_minimal()
 
-
-
-# Topic analysis
-
+```
 
 
 
 # Corpus analysis
 
-Most common words in abstracts. Not surprisingly they match the search terms
+## Most common words in abstracts.
+Not surprisingly they match the search terms
 
 ```{r, echo=FALSE, message=FALSE}
-
+# Tutorial groups by book does not work well for bigrams
+# https://bookdown.org/Maxine/tidy-text-mining/the-unnest-tokens-function.html
 # Does tokenize contract?
 
 tidy_abs <- author_df |>
   select(entry_number, dc_description) |> 
-  group_by(entry_number) |> 
+  # group_by(entry_number) |>  # All abstracts not comparing publications
   unnest_tokens(word, dc_description) |> 
   anti_join(stop_words) |> 
   ungroup()
 
 tidy_abs |>
-  count(word, sort = T) |> 
-  filter(n > 600) |> 
+  count(word, sort = T) |>
+  filter(n > 600) |>
   mutate(word = reorder(word, n)) |>
   ggplot(aes(n, word)) +
   geom_col() +
-  labs(y = NULL)
+  labs(y = NULL) +
+  theme_minimal()
+
+# Top n words
+# tidy_abs |> 
+#   count(word, sort = TRUE) |>
+#   top_n(10) |> 
+#   mutate(word = reorder(word, n)) |>
+#   ggplot() +
+#   geom_col(aes(x = n, y = word))
+
+```
+
+## Most common word pairs in abstracts (again, no surprises)
+
+```{r, echo=FALSE, message=FALSE}
+
+# bigrams does not work well grouped by entry (too little information in abs)
+# tutorial does not group_by book https://bookdown.org/Maxine/tidy-text-mining/tokenizing-by-n-gram.html
+tidy_abs_ngrams <- author_df |>
+  select(entry_number, dc_description) |> 
+  unnest_tokens(bigram, dc_description, token = "ngrams", n = 2) |> 
+  separate(bigram, into = c("word1", "word2"), sep = " ") |>
+  filter(!word1 %in% c(stop_words$word, NA),
+         !word2 %in% c(stop_words$word, NA)) |>
+  unite(bigram, c(word1, word2), sep = " ") |>
+  count(bigram, sort = T) 
+
+tidy_abs_ngrams |>
+  slice(1:20) |>
+  mutate(bigram = reorder(bigram, n)) |>
+  ggplot(aes(n, bigram)) +
+  geom_col() +
+  labs(y = NULL) +
+  theme_minimal()
+
+```
+
+## Network of word pairs
+
+Network graph of most commonly joined words. "Note that this is a visualization of a Markov chain, a common model in text processing, where the choice of a word only depends on its previous word".
+
+```{r echo=FALSE}
+tidy_abs_ngrams_net <- author_df |>
+  select(entry_number, dc_description) |> 
+  unnest_tokens(bigram, dc_description, token = "ngrams", n = 2) |> 
+  separate(bigram, into = c("word1", "word2"), sep = " ") |>
+  filter(!word1 %in% c(stop_words$word, NA),
+         !word2 %in% c(stop_words$word, NA)) |>
+  unite(bigram, c(word1, word2), sep = " ", remove = FALSE) |>
+  count(word1, word2, sort = T) 
+
+bigram_graph <- tidy_abs_ngrams_net %>% 
+  filter(n > 20) %>%
+  as_tbl_graph()
+
+arrow <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(bigram_graph, layout = "fr") + 
+  geom_edge_link(aes(alpha = n), show.legend = F, 
+                 arrow = arrow, end_cap = circle(0.07, "inches")) + 
+  geom_node_point(color = "lightblue", size = 5) + 
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+```
+
+# tf-idf and log ratio
+
+Compares documents, not useful in this case but curious. Maybe can be analysed furter?
+
+```{r}
+# The following compares documents. Not useful in this case.
+tf_idf <- author_df |>
+  select(entry_number, dc_description) |>
+  unnest_tokens(word, dc_description) |>
+  add_count(entry_number, name = "total_words") |>
+  group_by(entry_number, total_words) |>
+  count(word, sort = TRUE) |>
+  ungroup() |>
+  select(-total_words) |>
+  # mutate(all = "all_abs") |>
+  bind_tf_idf(term = word, document = entry_number, n = n) |>
+  bind_log_odds(set = entry_number, feature = word, n = n) |>
+  arrange(desc(tf_idf))
 
 ```
 
@@ -254,9 +380,43 @@ tidy_abs |>
 
 ```
 
-Most common word pairs?
+
+# Correlating word pairs
+
+```{r, echo=FALSE, message=TRUE}
+tidy_abs_widyr <- tidy_abs |>
+  pairwise_count(word, entry_number, sort = TRUE)
+
+tidy_abs_widyr_word_cors <- tidy_abs |> 
+  add_count(word) |> 
+  filter(n >= 20) |> 
+  select(-n) |>
+  pairwise_cor(word, entry_number, sort = TRUE)
+
+# Using search terms, issues with contractions?
+tidy_abs_widyr_word_cors |>
+  filter(item1 %in% c("climate", "change", "justice", "social",
+                      "environmental", "global", "warming")) |>
+  group_by(item1) |>
+  top_n(6) |>
+  ungroup() |>
+  facet_bar(y = item2, x = correlation, by = item1, nrow = 7)
+
+```
+
+
+```{r, echo=FALSE, message=TRUE}
+# problem with grouping variable same as bigrams
+tidy_abs_widyr_word_cors %>%
+  filter(correlation > .5) %>%
+  as_tbl_graph() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation), show.legend = FALSE) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE)
+
+```
 
 
 
-Title length?
 
