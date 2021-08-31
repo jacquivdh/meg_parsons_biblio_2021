@@ -32,7 +32,7 @@ output: html_document
 
 # Info
 
-I'm doing a analysis of the literature published on 'climate justice', including 'social justice', 'environmental justice', 'climate change', and 'global warming'. The search terms and query use in the Scopus API were provided by Meg Parsons and returns 1827 results. Meg is interested in most of the standard info like when 'climate justice' was first mentioned, how popular the topic has become, who is publishing on it and so on. I'm hoping to delve a little deeper with some text mining analysis. This .rmd is the latest attempt after trying the bibliometrix package approach.
+I'm doing an analysis of the literature published on 'climate justice', including 'social justice', 'environmental justice', 'climate change', and 'global warming'. The search terms and query use in the Scopus API were provided by Meg Parsons and returns 1827 results. Meg is interested in most of the standard info like when 'climate justice' was first mentioned, how popular the topic has become, who is publishing on it and so on. I'm hoping to delve a little deeper with some text mining analysis. This .rmd is the latest attempt after trying the bibliometrix package approach.
 
 I'd appriciate:
 
@@ -462,7 +462,7 @@ ggplot(x, aes(n, bigram)) +
 
 ## Author collaboration netrowk
 
-George has some code in dropbox I need to have a look at
+Not sure how to do this yet. George has some code in dropbox I need to have a look at
 
 ## Futher analysis (ordination...?)
 
