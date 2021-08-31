@@ -1,66 +1,69 @@
 ---
-title: "bib_analysis"
+title: "Analysis of climate justice literature"
 output: html_document
 ---
 
-# Workflow
+<!-- # Workflow (notes to self) -->
 
-- Clean DB
+<!-- - Number of articles through time -->
 
-- Number of articles through time
+<!-- - Which journals are being published in bar graph -->
 
-- Which journals are being published in bar graph
+<!-- - mean number of authors per articles -->
 
-- mean number of authors per articles
+<!-- - Author collaboration network (tidygraph/tidygraph) -->
 
-- Author collaboration network (tidygraph/tidygraph)
+<!-- - Institution not always linked to country. George has code -->
 
-- Institution not always linked to country. George has code
+<!-- - George has code to clean language special characters -->
 
-- George has code to clean language special characters
+<!-- - Finn did author initials cleaning code -->
 
-- Finn did author initials cleaning code
+<!-- - Keyword co-occurance (can split out by time) -->
 
-- Keyword co-occurance (can split out by time)
+<!-- - ngrams (whole abstract; tidytex) -->
 
-- ngrams (whole abstract; tidytex)
+<!-- - LDA topic within topic -->
 
-- LDA topic within topic
+<!-- - DO THIS BETORE TOPIC MODELLING Stopwords (throw out the, a, and ...) and lemitize (contractions), another that does run/ran (tidytex) -->
 
-- DO THIS BETORE TOPIC MODELLING Stopwords (throw out the, a, and ...) and lemitize (contractions), another that does run/ran (tidytex)
-
-- revtools package
+<!-- - revtools package -->
 
 
+# Info
 
-Check
+I'm doing a analysis of the literature published on 'climate justice', including 'social justice', 'environmental justice', 'climate change', and 'global warming'. The search terms and query use in the Scopus API were provided by Meg Parsons and returns 1827 results. Meg is interested in most of the standard info like when 'climate justice' was first mentioned, how popular the topic has become, who is publishing on it and so on. I'm hoping to delve a little deeper with some text mining analysis. This .rmd is the latest attempt after trying the bibliometrix package approach.
 
-- column outliers
+I'd appriciate:
 
-- abstracts/keywords
+- An eye out for errors (I'm not sure if all the functions do what I expect them too, e.g., lemmatisation, incorrect grouping by article)
+  - I think I'm missing a filtering step to remove some poor records like auther name = The Lancet
 
-- unrelated titles
+- Any leads/code/resources on sections I haven't completed yet marked by empty headers at the end (like plotting the author network)
 
-- DOI (ISSN may be a bad record)
+- Methods of analysing the topic (I've seen ordinations on topic analysis)
 
-- Language (english)
+- Any useful stuff I haven't thought of doing!
+
+I ditched my first attempt following the bibliometrix package approach and the following draws heavily on [this tutorial](https://bookdown.org/Maxine/tidy-text-mining/tidy-text-format.html). Manually downloaded records from Scopus were not complete or tidy so I took George's advice and turned to using the API and focusing on Scopus and not Web of Science (at least for now). 
 
 
 ```{r include=FALSE}
 library(tidyverse)
 # library(data.table)
-library(janitor)
-library(rscopus)
-library(lubridate)
-library(tidytext)
-library(ggwordcloud)
+library(janitor) # Cleaning names
+library(rscopus) # For querying scopus through the API 
+library(lubridate) # Date formats
+library(tidytext) # Text mining
+library(ggwordcloud) # plotting word clouds
 # library(ggthemes)
 library(tidylo)
-library(widyr)
+library(widyr) # Word matrix
 library(tidygraph)
 library(ggraph)
 library(patchwork)
 
+# plotting function from tutorial
 facet_bar <- function(df, y, x, by, nrow = 2, ncol = 2, scales = "free") {
   mapping <- aes(y = reorder_within({{ y }}, {{ x }}, {{ by }}), 
                  x = {{ x }}, 
@@ -108,6 +111,7 @@ str(scopus_results$author)
 str(scopus_results$`prism:isbn`)
 lapply(scopus_results, str)
 
+# The following does not clean all columns to the correct format but is a start.
 author_df <- scopus_results[[1]] |> 
   mutate(prism_cover_date = as_date(prism_cover_date),
          author_count_total = as.numeric(author_count_total),
@@ -124,13 +128,15 @@ author_df[which(is.na(author_df$subtype_description)),]
 table(author_df$subtype, exclude = NULL) # only 1 undefined
 table(author_df$subtype_description, exclude = NULL) # undefined shows as NA
 
-
+# Checking out which fields have lots of NA values
 sapply(author_df, function(x) sum(is.na(x)))
 
 ```
 
 
 ## What publication types (books, artilces...)
+
+Filter out Notes, Letter, Erratum, Short Survey, Conference Paper, Conference Review?
 
 ```{r echo=FALSE, warning=FALSE}
 ggplot(author_df, aes(fct_infreq(subtype_description))) +
@@ -163,12 +169,15 @@ ggplot(head(journal_df, 20), aes(n, prism_publication_name)) +
   theme_minimal()
 
 ```
+
 Environmental Justice journal established in March 2008
 
 
 ## Publications through time
 
-```{r echo=FALSE}
+I will annotate this with key events like the Kyoto protocol, IPCC publications...
+
+```{r echo=FALSE, message=FALSE}
 publications_by_year <- author_df |> 
   select(year) |>
   group_by(year) |> 
@@ -197,6 +206,8 @@ ggplot(mean_author_by_year, aes(x = year, y = mean_auth)) +
 ```
 
 ## Most productive authors (first and not)
+
+Issues with duplicate authors? I.e., with/without initials in first name?
 
 ```{r echo=FALSE, message=FALSE}
 dim(scopus_results$author) # 4137 rows
@@ -263,7 +274,7 @@ Not surprisingly they match the search terms
 ```{r, echo=FALSE, message=FALSE}
 # Tutorial groups by book does not work well for bigrams
 # https://bookdown.org/Maxine/tidy-text-mining/the-unnest-tokens-function.html
-# Does tokenize contract?
+# Does tokenize do lemmitization?
 
 tidy_abs <- author_df |>
   select(entry_number, dc_description) |> 
@@ -316,6 +327,8 @@ tidy_abs_ngrams |>
 
 ```
 
+
+
 ## Network of word pairs
 
 Network graph of most commonly joined words. "Note that this is a visualization of a Markov chain, a common model in text processing, where the choice of a word only depends on its previous word".
@@ -346,9 +359,10 @@ ggraph(bigram_graph, layout = "fr") +
 
 # tf-idf and log ratio
 
-Compares documents, not useful in this case but curious. Maybe can be analysed furter?
+Compares documents, not useful in this case but curious. Maybe can be analysed further?
+Did not work when applied to all abstracts not grouped by article.
 
-```{r}
+```{r, echo=FALSE, message=FALSE}
 # The following compares documents. Not useful in this case.
 tf_idf <- author_df |>
   select(entry_number, dc_description) |>
@@ -362,6 +376,8 @@ tf_idf <- author_df |>
   bind_tf_idf(term = word, document = entry_number, n = n) |>
   bind_log_odds(set = entry_number, feature = word, n = n) |>
   arrange(desc(tf_idf))
+
+head(tf_idf)
 
 ```
 
@@ -391,7 +407,7 @@ tidy_abs_widyr_word_cors <- tidy_abs |>
   add_count(word) |> 
   filter(n >= 20) |> 
   select(-n) |>
-  pairwise_cor(word, entry_number, sort = TRUE)
+  pairwise_cor(word, entry_number, sort = TRUE) # Grouping by entry number. same problem as bigrams, too little info in abstracts?
 
 # Using search terms, issues with contractions?
 tidy_abs_widyr_word_cors |>
@@ -404,9 +420,10 @@ tidy_abs_widyr_word_cors |>
 
 ```
 
+Do I need to do some regex to remove numbers from abstracts? looks like DOIs are in there. Same from grouped bigrams.
 
 ```{r, echo=FALSE, message=TRUE}
-# problem with grouping variable same as bigrams
+# problem with grouping variable same as bigrams. see next code chunk
 tidy_abs_widyr_word_cors %>%
   filter(correlation > .5) %>%
   as_tbl_graph() %>%
@@ -416,6 +433,49 @@ tidy_abs_widyr_word_cors %>%
   geom_node_text(aes(label = name), repel = TRUE)
 
 ```
+
+The following is bigrams grouped by article rather than all article abstracts. Probably not useful to analyse per abstract but highlights some possible filtering is necessary on abstract texts?
+
+```{r, echo=FALSE, message=FALSE}
+# Numbers, DOIs dates?
+x <- author_df |>
+  select(entry_number, dc_description) |>
+  group_by(entry_number) |>
+  unnest_tokens(bigram, dc_description, token = "ngrams", n = 2) |> 
+  separate(bigram, into = c("word1", "word2"), sep = " ") |>
+  filter(!word1 %in% c(stop_words$word, NA),
+         !word2 %in% c(stop_words$word, NA)) |>
+  unite(bigram, c(word1, word2), sep = " ") |>
+  count(bigram, sort = T) |>
+  ungroup() |>
+  slice(1:20) |>
+  mutate(bigram = reorder(bigram, n))
+
+ggplot(x, aes(n, bigram)) +
+  geom_col() +
+  labs(y = NULL) +
+  theme_minimal()
+
+```
+
+# TO DO
+
+## Author collaboration netrowk
+
+George has some code in dropbox I need to have a look at
+
+## Futher analysis (ordination...?)
+
+## Countries publishing most
+
+## Countries most often mentioned in abstracts/keywords?
+
+
+## Analysis within topic (LDA possible within the given topic?)
+
+
+## Look at Finn and Georges Janky code
+
 
 
 
