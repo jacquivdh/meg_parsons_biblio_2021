@@ -233,6 +233,43 @@ ggplot(head(productive_authors_df, 20), aes(n, full_name)) +
 
 ```
 
+## Jacqui's suggestion: cleaning author names to handle duplicates by using "Surname, FirstInitial."
+
+The most common and basic unit we can fall back to is "Surname, FirstInitial."
+
+NOTE: This assumes that all combinations of names will produce a unique value, this may not always be the case (e.g. Jacqui Vanderhoorn, Jonathan Vanderhoorn)
+
+```{r echo=FALSE, message=FALSE}
+
+#scopus_results$author
+#question: what is this dataframe? Is it all of the authors pulled from the papers, without cleaning?
+
+top_authors <-
+scopus_results$author %>%
+  select(surname, initials) %>%
+  #removing entries with no surname or first initial as they will add NAs into our string cleaning.
+  #there are some entries with a surname and no other information, these will be removed. But if we are only interested in the top authors, they are not a problem
+  drop_na() %>%
+  #extracting first initial and pasting with surname in the format of "Surname, FirstInitial."
+  mutate(name_formatted = paste(surname, substr(initials, start = 1, stop = 2), sep = ", ")) %>%
+  #counting the number of publications 
+  count(name_formatted, sort = TRUE) %>%
+  #only including authors that have published more than 5 papers
+  filter(n >= 5) %>%
+  #converting author name to factor
+  mutate(name_formatted = as.factor(name_formatted)) %>%
+  #using fct_reorder2() to sort by two vlaues, 1: sorting by n, then 2: by alphabetical order
+  mutate(name_formatted = fct_reorder2(name_formatted, n, sort(name_formatted)))
+
+ggplot(data = top_authors) +
+  geom_col(aes(x = n, y = name_formatted)) +
+  labs(y = NULL) +
+  theme_minimal()
+
+```
+
+
+
 
 ## Most cited papers
 
